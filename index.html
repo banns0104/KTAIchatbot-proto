@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>LEX — KT Legal AI Messenger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script>
+    /* Babel 경고 완전 차단 — Babel 로드 전에 실행 */
+    !function(){var f=function(a){return typeof a==='string'&&(a.includes('Babel')||a.includes('babel')||a.includes('precompile')||a.includes('transformer'));};['warn','error'].forEach(function(k){var o=console[k].bind(console);console[k]=function(){if(!f(arguments[0]))o.apply(console,arguments);};});}();
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#root{width:100%;height:100%;overflow:hidden}
+    body{background:#E8EBF2;font-family:'Noto Sans KR',sans-serif;-webkit-font-smoothing:antialiased}
+    textarea,input,button{font-family:'Noto Sans KR',sans-serif}
+    button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+    ::-webkit-scrollbar{width:3px;height:0}
+    ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.1);border-radius:2px}
+    /* 폰 내부 전체를 fixed height 컨테이너로 - 점프 방지 */
+    .phone-inner{position:absolute;inset:0;overflow:hidden;display:flex;flex-direction:column}
+    @keyframes lexDot   {0%,80%,100%{transform:scale(.45);opacity:.2}40%{transform:scale(1);opacity:1}}
+    @keyframes msgFade  {from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeIn   {from{opacity:0}to{opacity:1}}
+    @keyframes slideLeft{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+    @keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes pulse    {0%,100%{opacity:1}50%{opacity:.4}}
+    @keyframes ringPulse{0%{transform:scale(1);opacity:.45}100%{transform:scale(1.4);opacity:0}}
+    @keyframes spin     {to{transform:rotate(360deg)}}
+    @keyframes fadeUp   {from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useRef,useEffect,useCallback,useMemo} = React;
+
+/* ── TOKENS ────────────────────────────────────────────────────────────── */
+const C={
+  bg:'#F2F4F8',surface:'#FFFFFF',surfaceAlt:'#EEF0F6',border:'#E3E5EF',
+  red:'#E30613',redLight:'#FFF1F2',redSoft:'#FFDADC',
+  textPri:'#12131F',textSec:'#5E6078',textTer:'#A2A4B8',
+  blue:'#2563EB',blueLight:'#EFF4FF',green:'#16A34A',
+};
+
+/* ── MOCK AI ENGINE (데모용 — API 키 불필요) ──────────────────────────── */
+const MOCK_DB = [
+  {keys:['자본시장법','투자권유'],
+   ans:`**자본시장법상 투자권유 규제 핵심**
+
+- **적합성 원칙** (제46조): 투자자 정보 파악 후 적합한 상품만 권유
+- **적정성 원칙** (제46조의2): 비권유 판매 시에도 부적정 상품 고지 의무
+- **설명의무** (제47조): 투자위험·수수료 등 핵심 사항 서면 설명
+- **불초청 권유 금지** (제49조): 방문·전화 등 사전 동의 없는 권유 금지
+
+📌 위반 시 손해배상 책임 및 과태료 최대 1억 원 (동법 제449조)`},
+  {keys:['금소법','6대원칙','소비자보호'],
+   ans:`**금융소비자보호법 6대 판매원칙**
+
+- **적합성 원칙**: 소비자 재무상황에 맞는 상품 권유
+- **적정성 원칙**: 자발적 구매 시에도 부적합 고지
+- **설명의무**: 상품 구조·위험 충분히 설명
+- **불공정영업 금지**: 우월적 지위 이용 불이익 강요 금지
+- **부당권유 금지**: 허위·과장 정보 제공 금지
+- **광고규제**: 필수 정보 포함, 과장 광고 금지
+
+📌 위반 시 청약철회권(제46조), 위법계약해지권(제47조) 행사 가능`},
+  {keys:['내부통제','내부통제기준'],
+   ans:`**금융투자회사 내부통제기준 필수 포함사항** (자본시장법 시행령 제30조)
+
+- 이해상충 방지 체계 및 정보교류 차단장치(차이니즈월)
+- 임직원 금융투자상품 매매 사전신고 제도
+- 준법감시인 권한·독립성 보장 조항
+- 위법행위 신고 및 내부고발자 보호 절차
+- 리스크 관리 및 한도 설정 기준
+
+📌 내부통제기준 미비 시 금감원 제재심의 주요 감점 항목 (2024년 기준)`},
+  {keys:['불완전판매','판매'],
+   ans:`**불완전판매 관련 주요 판례**
+
+**대법원 2020다12345** — 설명의무 위반
+파생결합상품 투자손실 중 금융사 30% 책임 인정.
+"투자자 이해 여부 확인 없는 서명만으론 설명의무 이행 불가"
+
+**금감원 분조위 2023-제14호** — 적합성 원칙 위반
+고령 투자자 원금비보장 ELS 권유, 손해액 70% 배상 결정
+
+📌 KT 빅데이터 기준 2018~2024년 불완전판매 관련 판결 2,341건 분석 완료`},
+  {keys:['금감원','검사'],
+   ans:`**2024~2025년 금감원 금융투자업 주요 검사 포인트**
+
+- **내부통제 실질화** — 형식적 운영 여부 집중 점검
+- **영업행위 적정성** — 고령·취약계층 금융소비자 보호
+- **알고리즘 트레이딩** — AI 기반 매매 시스템 리스크 관리
+- **사모펀드** — 운용사 이해상충·자전거래 모니터링
+- **IT·사이버보안** — 망 분리, 개인정보 보호 체계
+
+📌 2025년 2분기부터 ESG 공시 관련 검사 항목 신설 예정`},
+  {keys:['공시','주요사항'],
+   ans:`**코스닥 상장법인 주요사항보고서 의무 제출 사유** (자본시장법 제161조)
+
+- 부도·영업정지, 해산 사유 발생
+- 자본금 감소 또는 증자 결정
+- 합병·분할·주식교환·이전 결정
+- 영업 전부/중요 일부 양수도
+- 대규모 소송 제기·결정 (자산총액 10% 이상)
+- 최대주주 변경, 임원 대규모 변동
+
+📌 발생일로부터 **익일** 거래소 및 금감원 동시 제출 의무`},
+  {keys:['PEF','사모펀드'],
+   ans:`**사모펀드(PEF) 설립 요건** (자본시장법 제249조의2)
+
+- **최소 투자자 수**: 적격투자자 49인 이하
+- **최소 출자금**: 1억 원 이상 (개인 적격투자자)
+- **운용사 등록**: 금감원 전문투자형 사모집합투자업 등록
+- **GP 출자 의무**: 운용사 자기자본 1% 이상 공동 출자
+- **레버리지 한도**: 자산총액의 400% (부동산 PEF 200%)
+
+📌 2021년 법 개정으로 기관전용 PEF와 일반 PEF로 구분 운용`},
+  {keys:['약관','심사'],
+   ans:`**금감원 금융투자업 약관 심사 주요 기준**
+
+- **불공정 조항 여부**: 소비자에 일방적으로 불리한 내용
+- **중요사항 명확성**: 수수료·위험고지 가독성 기준 충족
+- **법령 정합성**: 자본시장법·금소법·전자금융거래법 부합 여부
+- **이해충돌 방지**: 금융사 면책 과다 조항 제한
+- **청약철회 보장**: 소비자 권리 행사 절차 명시
+
+📌 약관 제정·변경 시 시행 7일 전 금감원 보고 의무`},
+  {keys:['리스크','리스크관리'],
+   ans:`**금융투자업 리스크 관리 핵심 규정**
+
+- **시장리스크**: VaR(99%, 10일) 기준 자기자본 대비 한도 설정
+- **신용리스크**: 거래상대방 익스포저 집중도 제한 (1인 20%)
+- **유동성리스크**: 잔존만기 1개월 이내 자산/부채 비율 관리
+- **운영리스크**: 내부 손실 데이터 수집·보고 체계 의무화
+
+📌 2024년부터 기후·ESG 리스크 관리 항목 감독지침 신설`},
+  {keys:['위반','제재','과태료'],
+   ans:`**금융규정 위반 시 주요 제재 기준**
+
+| 위반 유형 | 제재 수준 |
+|---|---|
+| 설명의무 위반 | 과태료 최대 3천만 원 |
+| 적합성 원칙 위반 | 과태료 최대 1억 원 |
+| 불건전 영업행위 | 영업정지 1~6개월 |
+| 내부통제기준 미흡 | 기관경고 + 임원 문책 |
+
+📌 반복 위반 시 금융투자업 인가·등록 취소 가능 (자본시장법 제420조)`},
+];
+
+function mockAsk(prompt) {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      const match = MOCK_DB.find(d => d.keys.some(k => prompt.includes(k)));
+      const ans = match ? match.ans :
+`**LEX 검색 결과**
+
+입력하신 내용을 KT 빅데이터 1,200만 건 기준으로 분석했습니다.
+
+- 관련 법령: 자본시장법, 금소법, 금감원 감독규정
+- 관련 판례: 최근 3년 내 유사 판결 12건 확인
+- 권고사항: 구체적인 사실관계 확인 후 법무팀 최종 검토 권장
+
+💡 더 정확한 답변을 위해 키워드를 구체화해 주세요.
+예) "자본시장법 투자권유 규제", "금소법 설명의무 위반 판례"
+
+⚠️ KT 빅데이터 기준 유사 사례 제공 — 법적 최종 판단은 법무팀 의뢰 권고`;
+      resolve(ans);
+    }, 1200 + Math.random() * 600);
+  });
+}
+
+/* ── LEGAL KEYWORD DETECTION ───────────────────────────────────────────── */
+const LEGAL_KW = [
+  {kw:'자본시장법', prompt:'자본시장법상 투자권유 규제 핵심 내용을 정리해줘', label:'자본시장법'},
+  {kw:'금소법',    prompt:'금융소비자보호법 판매규제 6대 원칙을 설명해줘', label:'금소법'},
+  {kw:'컴플라이언스', prompt:'컴플라이언스 관련 내부통제 기준은?', label:'컴플라이언스'},
+  {kw:'내부통제',  prompt:'금융투자회사 내부통제기준 필수 포함사항은?', label:'내부통제'},
+  {kw:'금감원',    prompt:'최근 금감원 금융투자업 주요 검사 포인트는?', label:'금감원 검사'},
+  {kw:'불완전판매', prompt:'불완전판매 관련 주요 금융분쟁 판례를 요약해줘', label:'불완전판매'},
+  {kw:'약관',      prompt:'금융투자업 약관 심사 시 금감원의 주요 심사기준은?', label:'약관 심사'},
+  {kw:'위반',      prompt:'금융규정 위반 시 제재 및 과태료 기준은?', label:'위반·제재'},
+  {kw:'리스크',    prompt:'금융투자업 리스크 관리 규정은?', label:'리스크 관리'},
+  {kw:'PEF',       prompt:'사모펀드(PEF) 설립 시 주요 법적 요건은?', label:'PEF 규정'},
+];
+function detectKws(msgs){
+  const txt = msgs.slice(-8).map(m=>m.content||'').join(' ');
+  return LEGAL_KW.filter(k=>txt.includes(k.kw));
+}
+
+/* ── DATA ──────────────────────────────────────────────────────────────── */
+const CHIPS=[
+  {icon:'⚖️',label:'자본시장법 핵심',  prompt:'자본시장법상 투자권유 규제 핵심 내용을 정리해줘'},
+  {icon:'🛡️',label:'금소법 6대원칙',   prompt:'금융소비자보호법 판매규제 6대 원칙을 설명해줘'},
+  {icon:'📋',label:'내부통제기준',      prompt:'금융투자회사 내부통제기준 필수 포함사항은?'},
+  {icon:'🔍',label:'불완전판매 판례',  prompt:'불완전판매 관련 주요 금융분쟁 판례를 요약해줘'},
+  {icon:'📊',label:'공시 의무사항',     prompt:'코스닥 상장법인 주요사항 보고서 의무 제출 사유는?'},
+  {icon:'🏛️',label:'금감원 검사',      prompt:'최근 금감원 금융투자업 주요 검사 포인트는?'},
+  {icon:'💼',label:'PEF 설립요건',      prompt:'사모펀드(PEF) 설립 시 주요 법적 요건과 등록 절차는?'},
+  {icon:'📜',label:'약관 심사기준',     prompt:'금융투자업 약관 심사 시 금감원의 주요 심사기준은?'},
+];
+const STATS=[
+  {val:'1,200만',      label:'판례·법령 학습'},
+  {val:'0.8초',        label:'평균 응답속도'},
+  {val:'금투협·금감원', label:'공인 플랫폼'},
+];
+const CONTACTS=[
+  {id:'c1',name:'컴플라이언스팀',sub:'이팀장: 내일 오전 회의 자료 확인해주세요',avatar:'컴',online:true,unread:7,
+   msgs:[{from:'them',content:'내일 오전 9시 컴플라이언스 정례회의 자료 검토 부탁드립니다.',time:'어제 17:22'},
+         {from:'them',content:"'2025년 2분기 내부통제 점검결과' 함께 보시면 됩니다.",time:'어제 17:23'},
+         {from:'me',  content:'네, 확인했습니다. 검토 후 의견 드리겠습니다.',time:'어제 18:05'},
+         {from:'them',content:'3페이지 리스크 항목 추가 의견 오늘 중으로 공유해주세요!',time:'어제 18:10'},
+         {from:'them',content:'금소법 관련 신규 가이드라인 적용 건도 검토 필요합니다.',time:'오늘 09:15'}]},
+  {id:'c2',name:'김준호 부장',sub:'감사합니다',avatar:'김',online:true,unread:2,
+   msgs:[{from:'me',  content:'부장님, 자본시장법 관련 내부 지침 초안 공유 드렸습니다.',time:'어제 14:30'},
+         {from:'them',content:'잘 받았습니다. 불완전판매 관련 조항 구체화가 필요해 보입니다.',time:'어제 15:12'},
+         {from:'me',  content:'수정해서 내일 오전까지 재공유 드리겠습니다.',time:'어제 16:00'},
+         {from:'them',content:'감사합니다',time:'어제 16:02'}]},
+  {id:'c3',name:'리스크관리팀',sub:'최대리: 보고서 공유드립니다',avatar:'리',online:true,unread:1,
+   msgs:[{from:'them',content:'2025년 1분기 리스크 현황 보고서.pdf',time:'오늘 10:31',isFile:true},
+         {from:'them',content:'금감원 검사 대비 내부통제 점검 사항도 포함돼 있습니다.',time:'오늘 10:32'}]},
+  {id:'c4',name:'박수연 과장',sub:'이석 중',avatar:'박',online:false,unread:0,
+   msgs:[{from:'me',  content:'과장님, 오늘 오후에 잠깐 시간 괜찮으신가요?',time:'오늘 11:00'},
+         {from:'them',content:'지금 외부 미팅 중입니다. 오후 3시 이후에 연락 주세요.',time:'오늘 11:24'}]},
+  {id:'c5',name:'감사팀 공지',sub:'[공지] 4월 정기감사 일정 안내',avatar:'감',online:false,unread:3,
+   msgs:[{from:'them',content:'[공지] 4월 정기감사 일정 안내\n\n감사일정: 2025.04.14(월) ~ 04.18(금)\n대상: 준법감시팀, 리스크관리팀, 자산운용팀\n\n관련 자료 4월 11일까지 드라이브에 업로드 바랍니다.',time:'2일 전 09:00'}]},
+  {id:'c6',name:'법무팀 단체방',sub:'홍부장: 검토 완료했습니다',avatar:'법',online:true,unread:0,
+   msgs:[{from:'them',content:'신규 파생상품 약관 검토 — 자본시장법 및 금소법 제19조 관련 조항 보완 필요합니다.',time:'3일 전 10:03',sender:'김변호사'},
+         {from:'me',  content:'확인했습니다. 수정안 작성해서 공유드릴게요.',time:'3일 전 14:00'},
+         {from:'them',content:'수정안 잘 받았습니다. 검토 완료했습니다.',time:'어제 09:30',sender:'홍부장'}]},
+];
+const ACOLORS=['#2563EB','#16A34A','#D97706','#7C3AED','#0891B2','#DC2626','#0D9488','#EA580C'];
+const EMOJIS =['😊','😂','👍','🙏','💪','✅','❓','📌','⚠️','🔥','📎','📋'];
+const ts = ()=>new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+
+/* ── ATOMS ─────────────────────────────────────────────────────────────── */
+function Av({c,size=44}){
+  const idx=c.id?c.id.charCodeAt(c.id.length-1)%ACOLORS.length:0;
+  return(
+    <div style={{position:'relative',flexShrink:0}}>
+      <div style={{width:size,height:size,borderRadius:'50%',background:ACOLORS[idx],
+        display:'flex',alignItems:'center',justifyContent:'center',
+        color:'#fff',fontSize:size*.38,fontWeight:800}}>
+        {c.avatar}
+      </div>
+      {c.online&&<div style={{position:'absolute',bottom:1,right:1,
+        width:size*.22,height:size*.22,borderRadius:'50%',background:C.green,
+        border:`${Math.max(1.5,size*.055)}px solid #fff`}}/>}
+    </div>
+  );
+}
+function Bdg({n}){
+  if(!n)return null;
+  return<div style={{minWidth:17,height:17,borderRadius:9,background:C.red,
+    color:'#fff',fontSize:9.5,fontWeight:700,display:'flex',alignItems:'center',
+    justifyContent:'center',padding:'0 4px'}}>{n>99?'99+':n}</div>;
+}
+function LexAv({size=36}){
+  return<div style={{width:size,height:size,borderRadius:size*.27,flexShrink:0,
+    background:'linear-gradient(135deg,#E30613,#8A0009)',
+    display:'flex',alignItems:'center',justifyContent:'center',
+    color:'#fff',fontSize:size*.32,fontWeight:900,fontFamily:"'DM Mono',monospace",
+    boxShadow:'0 2px 8px rgba(227,6,19,.2)'}}>L</div>;
+}
+function TypDots(){
+  return<div style={{display:'flex',alignItems:'center',gap:5,padding:'9px 13px',
+    background:'rgba(255,241,242,.9)',borderRadius:'13px 13px 13px 4px',
+    border:'1px solid #FFDADC'}}>
+    {[0,1,2].map(i=><div key={i} style={{width:5,height:5,borderRadius:'50%',background:C.red,
+      animation:'lexDot 1.2s ease infinite',animationDelay:`${i*.18}s`}}/>)}
+    <span style={{fontSize:10,color:C.red,marginLeft:3,fontFamily:"'DM Mono',monospace"}}>LEX 분석 중...</span>
+  </div>;
+}
+function md(text,isU){
+  return text.split('\n').map((line,i)=>{
+    const p=line.split(/\*\*(.*?)\*\*/g).map((s,j)=>j%2===1?<strong key={j}>{s}</strong>:s);
+    if(line.startsWith('- ')||line.startsWith('• '))
+      return<div key={i} style={{display:'flex',gap:6,marginTop:3}}>
+        <span style={{color:isU?'rgba(255,255,255,.7)':C.red,flexShrink:0,fontSize:11}}>▸</span>
+        <span>{p}</span></div>;
+    if(line==='')return<div key={i} style={{height:4}}/>;
+    return<div key={i}>{p}</div>;
+  });
+}
+
+/* ── LEX INSIGHT BANNER ─────────────────────────────────────────────────── */
+function LexBanner({kws,onAsk}){
+  const [gone,setGone]=useState(false);
+  const [open,setOpen]=useState(true);
+  if(gone||kws.length===0)return null;
+  return(
+    <div style={{flexShrink:0,margin:'4px 10px 0',borderRadius:13,
+      background:'linear-gradient(135deg,#FFF1F2,#FFF8F8)',
+      border:'1.5px solid #FFDADC',
+      animation:'slideDown .25s cubic-bezier(.16,1,.3,1)',
+      boxShadow:'0 2px 10px rgba(227,6,19,.07)'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 11px',cursor:'pointer'}}
+        onClick={()=>setOpen(p=>!p)}>
+        <div style={{position:'relative'}}>
+          <LexAv size={24}/>
+          <div style={{position:'absolute',top:-1,right:-1,width:7,height:7,borderRadius:'50%',
+            background:C.green,border:'1.5px solid #FFF1F2',animation:'pulse 2s ease infinite'}}/>
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.red,fontFamily:"'DM Mono',monospace"}}>
+            LEX 인사이트
+          </div>
+          <div style={{fontSize:10,color:C.textSec}}>법률 키워드 감지됨 · 탭해서 즉시 검색</div>
+        </div>
+        <span style={{fontSize:10,color:C.textTer}}>{open?'▲':'▼'}</span>
+        <button onClick={e=>{e.stopPropagation();setGone(true);}}
+          style={{width:18,height:18,borderRadius:'50%',border:'none',
+            background:'rgba(227,6,19,.12)',color:C.red,fontSize:10,
+            display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+      </div>
+      {open&&<div style={{padding:'0 11px 9px',display:'flex',gap:5,flexWrap:'wrap'}}>
+        {kws.map((k,i)=>(
+          <button key={i} onClick={()=>onAsk(k.prompt,k.label)}
+            style={{padding:'4px 10px',borderRadius:20,
+              background:'rgba(227,6,19,.07)',border:'1px solid rgba(227,6,19,.18)',
+              color:C.red,fontSize:11,fontWeight:600,transition:'all .15s'}}
+            onMouseEnter={e=>e.currentTarget.style.background='rgba(227,6,19,.14)'}
+            onMouseLeave={e=>e.currentTarget.style.background='rgba(227,6,19,.07)'}>
+            ⚡ {k.label}
+          </button>
+        ))}
+      </div>}
+    </div>
+  );
+}
+
+/* ── LEX INLINE RESPONSE ────────────────────────────────────────────────── */
+function LexInline({msg}){
+  const [cp,setCp]=useState(false);
+  return(
+    <div style={{animation:'msgFade .28s ease',margin:'3px 0'}}>
+      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4,paddingLeft:2}}>
+        <LexAv size={20}/>
+        <span style={{fontSize:10,color:C.red,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>LEX</span>
+        <span style={{fontSize:9.5,color:C.textTer,fontFamily:"'DM Mono',monospace"}}>{msg.time}</span>
+        <div style={{flex:1,height:1,background:'linear-gradient(90deg,rgba(227,6,19,.15),transparent)'}}/>
+      </div>
+      <div style={{marginLeft:26,padding:'10px 13px',
+        borderRadius:'4px 14px 14px 14px',
+        background:'linear-gradient(135deg,#FFF8F8,#FFF1F2)',
+        border:'1.5px solid #FFDADC',
+        fontSize:12.5,lineHeight:1.7,color:C.textPri,
+        boxShadow:'0 2px 8px rgba(227,6,19,.06)'}}>
+        {md(msg.content,false)}
+        <div style={{display:'flex',alignItems:'center',gap:4,marginTop:7,
+          padding:'3px 7px',background:'rgba(227,6,19,.07)',borderRadius:5,width:'fit-content'}}>
+          <div style={{width:4,height:4,borderRadius:'50%',background:C.red,animation:'pulse 2s ease infinite'}}/>
+          <span style={{fontSize:9,color:C.red,fontFamily:"'DM Mono',monospace",fontWeight:600}}>
+            KT 빅데이터 · 금투협 · 금감원
+          </span>
+        </div>
+      </div>
+      <div style={{marginLeft:26,marginTop:3}}>
+        <button onClick={()=>{navigator.clipboard?.writeText(msg.content).catch(()=>{});
+          setCp(true);setTimeout(()=>setCp(false),1500);}}
+          style={{fontSize:9.5,color:cp?C.green:C.textTer,background:'none',
+            border:'none',padding:0,fontFamily:"'DM Mono',monospace",transition:'color .2s'}}>
+          {cp?'✓ 복사됨':'복사'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── REG BUBBLE ─────────────────────────────────────────────────────────── */
+function RegBubble({msg,contact}){
+  if(msg.isLex)return<LexInline msg={msg}/>;
+  if(msg.isLexTyping)return(
+    <div style={{animation:'msgFade .2s ease',margin:'2px 0',paddingLeft:26}}>
+      <TypDots/>
+    </div>
+  );
+  const isMe=msg.from==='me';
+  return(
+    <div style={{display:'flex',flexDirection:isMe?'row-reverse':'row',
+      gap:8,alignItems:'flex-end',marginBottom:2,animation:'msgFade .2s ease'}}>
+      {!isMe&&<Av c={contact} size={28}/>}
+      <div style={{maxWidth:'76%',display:'flex',flexDirection:'column',
+        alignItems:isMe?'flex-end':'flex-start'}}>
+        {!isMe&&msg.sender&&<div style={{fontSize:10.5,fontWeight:600,color:C.textSec,
+          marginBottom:2,marginLeft:2}}>{msg.sender}</div>}
+        <div style={{padding:'9px 12px',
+          borderRadius:isMe?'16px 16px 4px 16px':'16px 16px 16px 4px',
+          background:isMe?`linear-gradient(135deg,${C.blue},#1D4ED8)`:C.surface,
+          color:isMe?'#fff':C.textPri,fontSize:13,lineHeight:1.65,
+          border:isMe?'none':`1px solid ${C.border}`,
+          boxShadow:'0 1px 4px rgba(0,0,0,.06)',
+          whiteSpace:'pre-wrap',wordBreak:'break-word'}}>
+          {msg.isFile
+            ?<div style={{display:'flex',alignItems:'center',gap:8}}>
+               <span style={{fontSize:18}}>📎</span>
+               <div>
+                 <div style={{fontSize:12,fontWeight:600}}>{msg.content}</div>
+                 <div style={{fontSize:10,color:isMe?'rgba(255,255,255,.6)':C.textTer,marginTop:1}}>파일 · 탭하여 열기</div>
+               </div>
+             </div>
+            :msg.content}
+        </div>
+        <div style={{fontSize:9.5,color:C.textTer,marginTop:2}}>{msg.time}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ── REG CHAT ───────────────────────────────────────────────────────────── */
+function RegChat({contact,onBack,onLex}){
+  const [msgs,setMsgs]=useState(contact.msgs.map(m=>({...m})));
+  const [inp,setInp]=useState('');
+  const [focus,setFocus]=useState(false);
+  const [emoji,setEmoji]=useState(false);
+  const [lexLoad,setLexLoad]=useState(false);
+  const bot=useRef(null);
+  const inr=useRef(null);
+
+  useEffect(()=>{bot.current?.scrollIntoView({behavior:'smooth'});},[msgs]);
+  const kws=useMemo(()=>detectKws(msgs),[msgs]);
+  const isLex=inp.startsWith('@LEX')||inp.startsWith('@lex');
+
+  const askLex=async(prompt,label)=>{
+    if(lexLoad)return;
+    const tid=Date.now();
+    setMsgs(p=>[...p,{id:tid,isLexTyping:true}]);
+    setLexLoad(true);
+    const rep=await mockAsk(prompt);
+    setMsgs(p=>p.filter(m=>m.id!==tid).concat({isLex:true,content:rep,time:ts(),label}));
+    setLexLoad(false);
+  };
+
+  const send=(text)=>{
+    const t=(text||inp).trim();if(!t)return;
+    if(isLex||t.startsWith('@LEX')||t.startsWith('@lex')){
+      const q=t.replace(/^@[Ll][Ee][Xx]\s*/,'').trim();
+      if(!q)return;
+      setInp('');if(inr.current)inr.current.style.height='auto';
+      setMsgs(p=>[...p,{from:'me',content:t,time:ts()}]);
+      askLex(q,'LEX 검색');return;
+    }
+    setInp('');setEmoji(false);if(inr.current)inr.current.style.height='auto';
+    setMsgs(p=>[...p,{from:'me',content:t,time:ts()}]);
+    setTimeout(()=>setMsgs(p=>[...p,{from:'them',content:'확인했습니다. 잠시 후 답변 드리겠습니다.',time:ts()}]),1200);
+  };
+
+  return(
+    <div className="phone-inner" style={{background:C.bg}}>
+      {/* Header — 고정 높이 */}
+      <div style={{paddingTop:50,paddingBottom:10,paddingLeft:12,paddingRight:12,
+        background:C.surface,borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:9}}>
+          <button onClick={onBack} style={{width:32,height:32,borderRadius:9,
+            background:C.surfaceAlt,border:`1px solid ${C.border}`,
+            display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path d="M15 18L9 12L15 6" stroke={C.textSec} strokeWidth="2.2" strokeLinecap="round"/>
+            </svg>
+          </button>
+          <Av c={contact} size={38}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:14,fontWeight:700,color:C.textPri}}>{contact.name}</div>
+            <div style={{display:'flex',alignItems:'center',gap:4,marginTop:1}}>
+              {contact.online
+                ?<><div style={{width:5,height:5,borderRadius:'50%',background:C.green}}/>
+                   <span style={{fontSize:10.5,color:C.textSec}}>온라인</span></>
+                :<span style={{fontSize:10.5,color:C.textTer}}>오프라인</span>}
+            </div>
+          </div>
+          <button onClick={onLex}
+            style={{display:'flex',alignItems:'center',gap:5,padding:'5px 9px',
+              borderRadius:18,background:C.redLight,border:'1px solid #FFDADC',
+              color:C.red,fontSize:11,fontWeight:700}}
+            onMouseEnter={e=>e.currentTarget.style.background='#FFE4E5'}
+            onMouseLeave={e=>e.currentTarget.style.background=C.redLight}>
+            <LexAv size={15}/> LEX
+          </button>
+        </div>
+      </div>
+
+      {/* Banner */}
+      <LexBanner kws={kws} onAsk={askLex}/>
+
+      {/* Messages — flex:1 + overflow scroll */}
+      <div style={{flex:1,overflowY:'auto',padding:'8px 12px',
+        display:'flex',flexDirection:'column',gap:3}}
+        onClick={()=>setEmoji(false)}>
+        <div style={{textAlign:'center',marginBottom:4}}>
+          <span style={{fontSize:10,color:C.textTer,background:C.border,
+            borderRadius:20,padding:'2px 11px'}}>오늘</span>
+        </div>
+        {msgs.map((m,i)=><RegBubble key={m.id||i} msg={m} contact={contact}/>)}
+        <div ref={bot}/>
+      </div>
+
+      {/* @LEX hint */}
+      {isLex&&(
+        <div style={{flexShrink:0,margin:'0 10px 4px',padding:'7px 11px',
+          borderRadius:11,background:C.redLight,border:'1px solid #FFDADC',
+          display:'flex',alignItems:'center',gap:7}}>
+          <LexAv size={18}/>
+          <span style={{fontSize:11,color:C.red,fontWeight:600}}>
+            @LEX 모드 — AI가 이 채팅방에서 직접 답변합니다
+          </span>
+        </div>
+      )}
+
+      {/* Emoji */}
+      {emoji&&(
+        <div style={{flexShrink:0,margin:'0 10px 5px',background:C.surface,
+          borderRadius:12,border:`1px solid ${C.border}`,padding:'8px 10px'}}>
+          <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+            {EMOJIS.map((e,i)=>(
+              <button key={i} onClick={()=>{setInp(p=>p+e);setEmoji(false);inr.current?.focus();}}
+                style={{width:32,height:32,borderRadius:7,border:`1px solid ${C.border}`,
+                  background:C.bg,fontSize:18,display:'flex',alignItems:'center',justifyContent:'center'}}
+                onMouseEnter={el=>el.currentTarget.style.background=C.surfaceAlt}
+                onMouseLeave={el=>el.currentTarget.style.background=C.bg}>{e}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Input — 고정 */}
+      <div style={{flexShrink:0,borderTop:`1px solid ${C.border}`,
+        background:C.surface,padding:'8px 10px 28px'}}>
+        {msgs.length<5&&!isLex&&(
+          <div style={{fontSize:10,color:C.textTer,textAlign:'center',
+            marginBottom:5,fontFamily:"'DM Mono',monospace"}}>
+            💡 <span style={{color:C.red}}>@LEX</span>로 법률 질문 바로 가능
+          </div>
+        )}
+        <div style={{display:'flex',alignItems:'flex-end',gap:6}}>
+          <button onClick={()=>setEmoji(p=>!p)}
+            style={{width:30,height:30,borderRadius:'50%',
+              background:emoji?C.redLight:C.surfaceAlt,
+              border:'none',fontSize:15,flexShrink:0,
+              display:'flex',alignItems:'center',justifyContent:'center'}}>😊</button>
+          <div style={{flex:1,
+            background:isLex?'#FFF8F8':focus?C.surface:C.surfaceAlt,
+            border:`1.5px solid ${isLex?C.red:focus?C.blue:C.border}`,
+            borderRadius:18,padding:'7px 12px',transition:'border-color .2s',
+            boxShadow:isLex?`0 0 0 3px ${C.redSoft}`:focus?'0 0 0 3px rgba(37,99,235,.1)':'none'}}>
+            <textarea ref={inr} value={inp}
+              onChange={e=>setInp(e.target.value)}
+              onFocus={()=>setFocus(true)} onBlur={()=>setFocus(false)}
+              onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}}
+              onInput={e=>{e.target.style.height='auto';e.target.style.height=Math.min(e.target.scrollHeight,72)+'px';}}
+              placeholder={isLex?'LEX에게 법률 질문...':`${contact.name}에게 메시지... (@LEX)`}
+              style={{width:'100%',border:'none',background:'transparent',
+                fontSize:13,color:C.textPri,lineHeight:1.5,
+                minHeight:20,maxHeight:72,resize:'none',outline:'none',display:'block'}}/>
+          </div>
+          <button onClick={()=>send()} disabled={!inp.trim()||lexLoad}
+            style={{width:36,height:36,borderRadius:'50%',
+              background:inp.trim()&&!lexLoad
+                ?(isLex?`linear-gradient(135deg,${C.red},#A00010)`:`linear-gradient(135deg,${C.blue},#1D4ED8)`)
+                :C.surfaceAlt,
+              border:'none',flexShrink:0,display:'flex',alignItems:'center',
+              justifyContent:'center',transition:'all .17s'}}>
+            {lexLoad
+              ?<div style={{width:11,height:11,border:`2px solid #FFDADC`,
+                  borderTopColor:C.red,borderRadius:'50%',animation:'spin .8s linear infinite'}}/>
+              :<svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                 <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"
+                   stroke={inp.trim()?'#fff':C.textTer} strokeWidth="2"
+                   strokeLinecap="round" strokeLinejoin="round"/>
+               </svg>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── AI BUBBLE (전용 채팅) ─────────────────────────────────────────────── */
+function AIBubble({msg}){
+  const [cp,setCp]=useState(false);
+  const isU=msg.role==='user';
+  return(
+    <div style={{display:'flex',flexDirection:isU?'row-reverse':'row',
+      gap:8,alignItems:'flex-end',animation:'msgFade .25s ease'}}>
+      {!isU&&<LexAv size={26}/>}
+      <div style={{maxWidth:'84%',display:'flex',flexDirection:'column',
+        alignItems:isU?'flex-end':'flex-start'}}>
+        {!isU&&<div style={{fontSize:9.5,color:C.red,marginBottom:3,marginLeft:2,
+          fontFamily:"'DM Mono',monospace",fontWeight:700}}>LEX · KT AI</div>}
+        <div style={{padding:'10px 13px',
+          borderRadius:isU?'16px 16px 4px 16px':'4px 16px 16px 16px',
+          background:isU?`linear-gradient(135deg,${C.blue},#1D4ED8)`:'linear-gradient(135deg,#FFF8F8,#FFF1F2)',
+          color:isU?'#fff':C.textPri,fontSize:13,lineHeight:1.7,
+          border:isU?'none':'1.5px solid #FFDADC',
+          boxShadow:isU?'0 2px 12px rgba(37,99,235,.18)':'0 2px 8px rgba(227,6,19,.07)'}}>
+          {md(msg.content,isU)}
+          {!isU&&<div style={{display:'flex',alignItems:'center',gap:4,marginTop:7,
+            padding:'3px 7px',background:'rgba(227,6,19,.07)',borderRadius:5,width:'fit-content'}}>
+            <div style={{width:4,height:4,borderRadius:'50%',background:C.red,animation:'pulse 2s ease infinite'}}/>
+            <span style={{fontSize:9,color:C.red,fontFamily:"'DM Mono',monospace",fontWeight:600}}>
+              KT 빅데이터 · 금투협 · 금감원
+            </span>
+          </div>}
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:7,marginTop:3}}>
+          <span style={{fontSize:9.5,color:C.textTer,fontFamily:"'DM Mono',monospace"}}>{msg.time}</span>
+          {!isU&&<button onClick={()=>{navigator.clipboard?.writeText(msg.content).catch(()=>{});
+            setCp(true);setTimeout(()=>setCp(false),1500);}}
+            style={{fontSize:9.5,color:cp?C.green:C.textTer,background:'none',
+              border:'none',padding:0,fontFamily:"'DM Mono',monospace",transition:'color .2s'}}>
+            {cp?'✓ 복사됨':'복사'}
+          </button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── LEX CHAT ───────────────────────────────────────────────────────────── */
+function LexChat({onBack}){
+  const [msgs,setMsgs]=useState([{role:'assistant',time:ts(),
+    content:'안녕하세요. **LEX**입니다.\n\nKT 법률 빅데이터 1,200만 건 기반으로 자본시장법, 금소법, 금감원 가이드라인, 내부통제 규정 등 금융 법률 질의에 즉시 답변드립니다.\n\n아래 빠른 질문으로 시작하거나 직접 입력해보세요.'}]);
+  const [inp,setInp]=useState('');
+  const [load,setLoad]=useState(false);
+  const [hist,setHist]=useState([]);
+  const [showQ,setShowQ]=useState(true);
+  const [focus,setFocus]=useState(false);
+  const bot=useRef(null);
+  const inr=useRef(null);
+
+  useEffect(()=>{bot.current?.scrollIntoView({behavior:'smooth'});},[msgs,load]);
+
+  const send=async(text)=>{
+    const t=(text||inp).trim();if(!t||load)return;
+    setInp('');setShowQ(false);if(inr.current)inr.current.style.height='auto';
+    setMsgs(p=>[...p,{role:'user',content:t,time:ts()}]);
+    const h=[...hist,{role:'user',content:t}];
+    setHist(h);setLoad(true);
+    const rep=await mockAsk(t);
+    setMsgs(p=>[...p,{role:'assistant',content:rep,time:ts()}]);
+    setHist(p=>[...p,{role:'assistant',content:rep}]);
+    setLoad(false);setTimeout(()=>inr.current?.focus(),60);
+  };
+
+  return(
+    <div className="phone-inner" style={{background:C.bg}}>
+      {/* Header */}
+      <div style={{paddingTop:50,paddingBottom:10,paddingLeft:12,paddingRight:12,
+        background:C.surface,borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:9}}>
+          <button onClick={onBack} style={{width:32,height:32,borderRadius:9,
+            background:C.surfaceAlt,border:`1px solid ${C.border}`,
+            display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path d="M15 18L9 12L15 6" stroke={C.textSec} strokeWidth="2.2" strokeLinecap="round"/>
+            </svg>
+          </button>
+          <LexAv size={36}/>
+          <div style={{flex:1}}>
+            <div style={{fontSize:15,fontWeight:800,color:C.textPri,
+              fontFamily:"'DM Mono',monospace",letterSpacing:'.04em'}}>LEX</div>
+            <div style={{display:'flex',alignItems:'center',gap:4,marginTop:1}}>
+              <div style={{width:5,height:5,borderRadius:'50%',background:C.green,animation:'pulse 2s ease infinite'}}/>
+              <span style={{fontSize:10,color:C.textTer,fontFamily:"'DM Mono',monospace"}}>KT 빅데이터 연동 · 데모 모드</span>
+            </div>
+          </div>
+          <button onClick={()=>{setMsgs([{role:'assistant',content:'새 대화를 시작합니다.',time:ts()}]);setHist([]);setShowQ(true);}}
+            style={{width:30,height:30,borderRadius:9,background:C.surfaceAlt,
+              border:`1px solid ${C.border}`,display:'flex',alignItems:'center',justifyContent:'center'}}
+            onMouseEnter={e=>e.currentTarget.style.background=C.redLight}
+            onMouseLeave={e=>e.currentTarget.style.background=C.surfaceAlt}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+              <path d="M12 5v14M5 12h14" stroke={C.textSec} strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div style={{flex:1,overflowY:'auto',padding:'12px 13px 6px',
+        display:'flex',flexDirection:'column',gap:12}}>
+        <div style={{textAlign:'center'}}>
+          <span style={{fontSize:9.5,color:C.textTer,background:C.border,
+            borderRadius:20,padding:'2px 11px',fontFamily:"'DM Mono',monospace"}}>
+            {new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'})}
+          </span>
+        </div>
+        {msgs.map((m,i)=><AIBubble key={i} msg={m}/>)}
+        {load&&<div style={{display:'flex',gap:8,alignItems:'flex-end'}}>
+          <LexAv size={26}/>
+          <div>
+            <div style={{fontSize:9.5,color:C.red,marginBottom:3,
+              fontFamily:"'DM Mono',monospace",fontWeight:700}}>LEX · KT AI</div>
+            <TypDots/>
+          </div>
+        </div>}
+        <div ref={bot}/>
+      </div>
+
+      {/* Quick chips */}
+      {showQ&&<div style={{flexShrink:0}}>
+        <div style={{display:'flex',gap:6,padding:'5px 12px',
+          overflowX:'auto',scrollbarWidth:'none'}}>
+          {CHIPS.map((c,i)=>(
+            <button key={i} onClick={()=>send(c.prompt)}
+              style={{flexShrink:0,display:'flex',alignItems:'center',gap:4,
+                padding:'6px 11px',background:C.surface,
+                border:`1px solid ${C.border}`,borderRadius:20,
+                color:C.textSec,fontSize:11.5,whiteSpace:'nowrap',transition:'all .15s'}}
+              onMouseEnter={e=>{e.currentTarget.style.background=C.redLight;e.currentTarget.style.borderColor='#FFDADC';e.currentTarget.style.color=C.red;}}
+              onMouseLeave={e=>{e.currentTarget.style.background=C.surface;e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.textSec;}}>
+              {c.icon} {c.label}
+            </button>
+          ))}
+        </div>
+      </div>}
+
+      {/* Input */}
+      <div style={{flexShrink:0,padding:'7px 11px 28px',
+        background:C.surface,borderTop:`1px solid ${C.border}`}}>
+        <div style={{display:'flex',alignItems:'flex-end',gap:7,
+          background:focus?C.surface:C.surfaceAlt,
+          border:`1.5px solid ${focus?C.red:C.border}`,
+          borderRadius:18,padding:'7px 7px 7px 13px',transition:'all .2s',
+          boxShadow:focus?`0 0 0 3px ${C.redSoft}`:'none'}}>
+          <textarea ref={inr} value={inp}
+            onChange={e=>setInp(e.target.value)}
+            onFocus={()=>setFocus(true)} onBlur={()=>setFocus(false)}
+            onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}}
+            onInput={e=>{e.target.style.height='auto';e.target.style.height=Math.min(e.target.scrollHeight,80)+'px';}}
+            placeholder="법령·판례 무엇이든 질문하세요..."
+            style={{flex:1,background:'transparent',border:'none',color:C.textPri,
+              fontSize:13,lineHeight:1.55,resize:'none',outline:'none',
+              minHeight:20,maxHeight:80,caretColor:C.red,padding:0}}/>
+          <button onClick={()=>send()} disabled={!inp.trim()||load}
+            style={{width:32,height:32,borderRadius:10,
+              background:inp.trim()&&!load?`linear-gradient(135deg,${C.red},#A00010)`:C.surfaceAlt,
+              border:'none',flexShrink:0,display:'flex',alignItems:'center',
+              justifyContent:'center',transition:'all .17s'}}>
+            {load?<div style={{width:11,height:11,border:`2px solid #FFDADC`,
+                borderTopColor:C.red,borderRadius:'50%',animation:'spin .8s linear infinite'}}/>
+              :<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                 <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"
+                   stroke={inp.trim()&&!load?'#fff':C.textTer} strokeWidth="2"
+                   strokeLinecap="round" strokeLinejoin="round"/>
+               </svg>}
+          </button>
+        </div>
+        <div style={{textAlign:'center',fontSize:9,color:C.textTer,marginTop:5,
+          fontFamily:"'DM Mono',monospace"}}>
+          🔒 KT 보안채널 · 데모 모드 (실제 API 미연동)
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── CONTACT ROW ────────────────────────────────────────────────────────── */
+function CRow({c,active,onSel}){
+  return(
+    <div onClick={()=>onSel(c.id)}
+      style={{margin:'1px 6px',padding:'9px 8px',borderRadius:12,
+        background:active?C.blueLight:'transparent',
+        border:`1.5px solid ${active?C.border:'transparent'}`,
+        cursor:'pointer',display:'flex',alignItems:'center',gap:10,transition:'all .12s'}}
+      onMouseEnter={e=>{if(!active)e.currentTarget.style.background=C.surfaceAlt;}}
+      onMouseLeave={e=>{if(!active)e.currentTarget.style.background='transparent';}}>
+      <Av c={c} size={42}/>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:13,fontWeight:700,color:C.textPri,marginBottom:2}}>{c.name}</div>
+        <div style={{fontSize:11,color:C.textSec,
+          whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.sub}</div>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:3,flexShrink:0}}>
+        <span style={{fontSize:9.5,color:C.textTer}}>{c.unread>0?'지금':'어제'}</span>
+        <Bdg n={c.unread}/>
+      </div>
+    </div>
+  );
+}
+
+/* ── MSG LIST ───────────────────────────────────────────────────────────── */
+function MsgList({contacts,onSel,activeId,onLex}){
+  const [search,setSearch]=useState('');
+  const [tab,setTab]=useState('chat');
+  const fil=contacts.filter(c=>c.name.includes(search)||c.sub.includes(search));
+
+  return(
+    <div className="phone-inner" style={{background:C.bg}}>
+      {/* Header */}
+      <div style={{paddingTop:50,paddingBottom:12,paddingLeft:14,paddingRight:14,
+        background:C.surface,borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:11}}>
+          <div style={{display:'flex',alignItems:'center',gap:9}}>
+            <div style={{width:38,height:38,borderRadius:'50%',
+              background:'linear-gradient(135deg,#2563EB,#1D4ED8)',
+              display:'flex',alignItems:'center',justifyContent:'center',
+              color:'#fff',fontSize:14,fontWeight:800}}>홍</div>
+            <div>
+              <div style={{fontSize:14,fontWeight:700,color:C.textPri}}>홍길동</div>
+              <div style={{fontSize:10.5,color:C.textSec}}>준법감시팀 · 대리</div>
+            </div>
+          </div>
+          <button style={{width:30,height:30,borderRadius:'50%',
+            background:C.surfaceAlt,border:'none',
+            display:'flex',alignItems:'center',justifyContent:'center'}}
+            onMouseEnter={e=>e.currentTarget.style.background=C.border}
+            onMouseLeave={e=>e.currentTarget.style.background=C.surfaceAlt}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="5" r="1.5" fill={C.textSec}/>
+              <circle cx="12" cy="12" r="1.5" fill={C.textSec}/>
+              <circle cx="12" cy="19" r="1.5" fill={C.textSec}/>
+            </svg>
+          </button>
+        </div>
+
+        {/* LEX 배너 */}
+        <div onClick={onLex}
+          style={{padding:'10px 13px',borderRadius:13,cursor:'pointer',
+            background:'linear-gradient(135deg,#12131F,#1E2035)',
+            marginBottom:9,display:'flex',alignItems:'center',gap:10,
+            boxShadow:'0 3px 14px rgba(18,19,31,.14)',transition:'transform .15s'}}
+          onMouseEnter={e=>e.currentTarget.style.transform='scale(1.01)'}
+          onMouseLeave={e=>e.currentTarget.style.transform='scale(1)'}>
+          <div style={{position:'relative'}}>
+            <LexAv size={38}/>
+            <div style={{position:'absolute',top:-1,right:-1,width:9,height:9,
+              borderRadius:'50%',background:C.green,border:'2px solid #12131F',
+              animation:'pulse 2s ease infinite'}}/>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+              <span style={{fontSize:13.5,fontWeight:800,color:'#fff',
+                fontFamily:"'DM Mono',monospace"}}>LEX</span>
+              <span style={{fontSize:9,background:C.red,color:'#fff',
+                borderRadius:3,padding:'1px 5px',fontWeight:700}}>AI</span>
+            </div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,.5)',
+              overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+              금융법령·판례 즉시 검색 · 대화 속 키워드 자동 감지
+            </div>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M9 18L15 12L9 6" stroke="rgba(255,255,255,.35)" strokeWidth="2.2" strokeLinecap="round"/>
+          </svg>
+        </div>
+
+        {/* Search */}
+        <div style={{display:'flex',alignItems:'center',gap:7,
+          background:C.surfaceAlt,border:`1px solid ${C.border}`,
+          borderRadius:10,padding:'7px 12px'}}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <circle cx="11" cy="11" r="7" stroke={C.textTer} strokeWidth="2.2"/>
+            <path d="M20 20L16 16" stroke={C.textTer} strokeWidth="2.2" strokeLinecap="round"/>
+          </svg>
+          <input value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="이름, 부서 검색"
+            style={{flex:1,border:'none',background:'transparent',
+              fontSize:12.5,color:C.textPri,outline:'none'}}/>
+          {search&&<button onClick={()=>setSearch('')}
+            style={{border:'none',background:'none',fontSize:12,color:C.textTer,padding:0}}>✕</button>}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:'flex',background:C.surface,
+        borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+        {[{k:'chat',l:'채팅'},{k:'contact',l:'연락처'},{k:'org',l:'조직도'}].map(t=>(
+          <button key={t.k} onClick={()=>setTab(t.k)}
+            style={{flex:1,padding:'9px 0',fontSize:12,
+              color:tab===t.k?C.blue:C.textTer,fontWeight:tab===t.k?700:400,
+              background:'none',border:'none',
+              borderBottom:`2px solid ${tab===t.k?C.blue:'transparent'}`,
+              transition:'all .15s'}}>{t.l}</button>
+        ))}
+      </div>
+
+      {tab==='chat'
+        ?<div style={{flex:1,overflowY:'auto',paddingBottom:4}}>
+           <div style={{padding:'8px 13px 2px',fontSize:9.5,color:C.textTer,
+             fontWeight:600,letterSpacing:'.07em'}}>최근 대화</div>
+           {fil.map(c=><CRow key={c.id} c={c} active={activeId===c.id} onSel={onSel}/>)}
+         </div>
+        :<div style={{flex:1,display:'flex',alignItems:'center',
+            justifyContent:'center',flexDirection:'column',gap:8}}>
+           <div style={{fontSize:36}}>{tab==='contact'?'👥':'🏢'}</div>
+           <div style={{fontSize:12.5,color:C.textTer}}>{tab==='contact'?'연락처':'조직도'}</div>
+         </div>}
+
+      {/* Bottom nav */}
+      <div style={{flexShrink:0,display:'flex',borderTop:`1px solid ${C.border}`,
+        background:C.surface,padding:'6px 0 26px'}}>
+        {[
+          {l:'채팅',active:true,
+           ic:<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke={C.blue} strokeWidth="1.8" strokeLinejoin="round" fill={C.blueLight}/></svg>},
+          {l:'연락처',
+           ic:<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke={C.textTer} strokeWidth="1.8"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke={C.textTer} strokeWidth="1.8" strokeLinecap="round"/></svg>},
+          {l:'LEX AI',isLex:true},
+          {l:'더보기',
+           ic:<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2" fill={C.textTer}/><circle cx="20" cy="12" r="2" fill={C.textTer}/><circle cx="4" cy="12" r="2" fill={C.textTer}/></svg>},
+        ].map((t,i)=>(
+          <div key={i} onClick={t.isLex?onLex:undefined}
+            style={{flex:1,display:'flex',flexDirection:'column',
+              alignItems:'center',gap:2,cursor:t.isLex?'pointer':'default',paddingTop:2}}>
+            {t.isLex
+              ?<div style={{position:'relative'}}>
+                 <LexAv size={22}/>
+                 <div style={{position:'absolute',top:-2,right:-2,width:7,height:7,
+                   borderRadius:'50%',background:C.green,
+                   border:`1.5px solid ${C.surface}`,animation:'pulse 2s ease infinite'}}/>
+               </div>
+              :t.ic}
+            <span style={{fontSize:9.5,
+              color:t.active?C.blue:t.isLex?C.red:C.textTer,
+              fontWeight:t.active||t.isLex?700:400}}>{t.l}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── SPLASH ─────────────────────────────────────────────────────────────── */
+function Splash({onStart}){
+  const [vis,setVis]=useState(false);
+  useEffect(()=>{const t=setTimeout(()=>setVis(true),80);return()=>clearTimeout(t);},[]);
+  const a=d=>({opacity:vis?1:0,transform:vis?'translateY(0)':'translateY(16px)',
+    transition:`all .55s cubic-bezier(.16,1,.3,1) ${d}s`});
+  return(
+    <div className="phone-inner"
+      style={{background:C.bg,padding:'0 26px',justifyContent:'flex-end',paddingBottom:36}}>
+      {/* 배경 글로우 */}
+      <div style={{position:'absolute',top:'10%',left:'50%',transform:'translateX(-50%)',
+        width:240,height:240,borderRadius:'50%',
+        background:'radial-gradient(circle,rgba(227,6,19,.07) 0%,transparent 68%)',
+        pointerEvents:'none'}}/>
+      {/* Logo */}
+      <div style={{position:'absolute',top:'11%',left:0,right:0,
+        display:'flex',flexDirection:'column',alignItems:'center',gap:11,...a(0)}}>
+        <div style={{position:'relative'}}>
+          <div style={{width:68,height:68,borderRadius:21,
+            background:'linear-gradient(135deg,#E30613,#8A0009)',
+            display:'flex',alignItems:'center',justifyContent:'center',
+            boxShadow:'0 8px 30px rgba(227,6,19,.22)',
+            fontSize:28,fontWeight:900,color:'#fff',fontFamily:"'DM Mono',monospace"}}>L</div>
+          <div style={{position:'absolute',inset:-3,borderRadius:24,
+            border:'1.5px solid rgba(227,6,19,.22)',animation:'ringPulse 2.5s ease infinite'}}/>
+        </div>
+        <div style={{textAlign:'center'}}>
+          <div style={{fontSize:32,fontWeight:800,color:C.textPri,letterSpacing:'-.02em',lineHeight:1.1}}>LEX</div>
+          <div style={{fontSize:10,color:C.textTer,letterSpacing:'.18em',
+            fontFamily:"'DM Mono',monospace",marginTop:2}}>KT LEGAL AI</div>
+        </div>
+      </div>
+      {/* Copy */}
+      <div style={{marginBottom:22,...a(.1)}}>
+        <div style={{fontSize:22,fontWeight:800,color:C.textPri,
+          lineHeight:1.3,letterSpacing:'-.02em',marginBottom:9}}>
+          대한민국 금융법,<br/>
+          <span style={{color:C.red}}>1,200만 건</span>의 데이터로<br/>
+          즉시 답합니다.
+        </div>
+        <div style={{fontSize:12.5,color:C.textSec,lineHeight:1.75}}>
+          대화 속 법률 키워드 자동 감지,<br/>
+          <strong>@LEX</strong>로 어떤 채팅방에서도 AI에게 질문하세요.
+        </div>
+      </div>
+      {/* Stats */}
+      <div style={{display:'flex',gap:6,marginBottom:18,...a(.2)}}>
+        {STATS.map((s,i)=>(
+          <div key={i} style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,
+            borderRadius:13,padding:'10px 5px',textAlign:'center'}}>
+            <div style={{fontSize:12,fontWeight:800,color:C.red,
+              fontFamily:"'DM Mono',monospace",marginBottom:2}}>{s.val}</div>
+            <div style={{fontSize:9,color:C.textTer,lineHeight:1.3}}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+      <div style={a(.3)}>
+        <button onClick={onStart} style={{width:'100%',padding:'15px 0',borderRadius:16,
+          background:`linear-gradient(135deg,${C.red},#A00010)`,border:'none',
+          color:'#fff',fontSize:15.5,fontWeight:700,
+          boxShadow:'0 4px 18px rgba(227,6,19,.28)',transition:'transform .15s'}}
+          onMouseEnter={e=>e.currentTarget.style.transform='scale(1.02)'}
+          onMouseLeave={e=>e.currentTarget.style.transform='scale(1)'}>
+          LEX 시작하기 →
+        </button>
+        <div style={{textAlign:'center',marginTop:10,fontSize:10,color:C.textTer,
+          fontFamily:"'DM Mono',monospace"}}>금투협 · 금감원 공인 보안채널</div>
+      </div>
+    </div>
+  );
+}
+
+/* ── STATUS BAR ─────────────────────────────────────────────────────────── */
+function SBar(){
+  return(
+    <div style={{position:'absolute',top:0,left:0,right:0,height:44,zIndex:200,
+      display:'flex',alignItems:'center',justifyContent:'space-between',
+      padding:'0 20px',pointerEvents:'none'}}>
+      <span style={{fontSize:13,fontWeight:700,color:C.textPri,
+        fontFamily:"'DM Mono',monospace"}}>9:41</span>
+      <div style={{display:'flex',gap:5,alignItems:'center'}}>
+        <svg width="17" height="11" viewBox="0 0 17 11" fill={C.textPri}>
+          <rect x="0" y="3" width="3" height="8" rx=".7"/>
+          <rect x="4.5" y="2" width="3" height="9" rx=".7"/>
+          <rect x="9" y=".5" width="3" height="10.5" rx=".7"/>
+          <rect x="13.5" y="0" width="3.5" height="11" rx=".7" opacity=".25"/>
+        </svg>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill={C.textPri}>
+          <path d="M8 2.5C10.2 2.5 12.2 3.4 13.6 4.9L14.8 3.6C13 1.7 10.6.4 8 .4 5.4.4 3 1.7 1.2 3.6L2.4 4.9C3.8 3.4 5.8 2.5 8 2.5Z" opacity=".4"/>
+          <path d="M8 5.5C9.5 5.5 10.8 6.2 11.8 7.1L13 5.8C11.6 4.5 9.9 3.6 8 3.6 6.1 3.6 4.4 4.5 3 5.8L4.2 7.1C5.2 6.2 6.5 5.5 8 5.5Z" opacity=".7"/>
+          <circle cx="8" cy="10.5" r="1.8"/>
+        </svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="none">
+          <rect x=".5" y=".5" width="21" height="11" rx="3.5" stroke={C.textPri} strokeOpacity=".3"/>
+          <rect x="2" y="2" width="15" height="8" rx="2" fill={C.textPri}/>
+          <path d="M23 4V8C23.8 7.6 24.5 7 24.5 6 24.5 5 23.8 4.4 23 4Z" fill={C.textPri} fillOpacity=".35"/>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════ ROOT ════════════════════════════════════ */
+function App(){
+  const [screen,setScreen]=useState('splash');
+  const [view,  setView]  =useState('list'); // list|chat|lex
+  const [conts, setConts] =useState(CONTACTS);
+  const [actId, setActId] =useState(null);
+  const [winW,  setWinW]  =useState(window.innerWidth);
+  const [winH,  setWinH]  =useState(window.innerHeight);
+
+  useEffect(()=>{
+    const h=()=>{setWinW(window.innerWidth);setWinH(window.innerHeight);};
+    window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);
+  },[]);
+
+  const isReal=winW<640;
+  const actC=conts.find(c=>c.id===actId);
+
+  const sel=useCallback((id)=>{
+    setConts(p=>p.map(c=>c.id===id?{...c,unread:0}:c));
+    setActId(id);setView('chat');
+  },[]);
+
+  /* 내부 UI (항상 모바일) */
+  const ui=(
+    <div style={{position:'absolute',inset:0,overflow:'hidden'}}>
+      <SBar/>
+      {screen==='splash'
+        ?<Splash onStart={()=>{setScreen('m');setView('list');}}/>
+        :view==='list'
+          ?<MsgList contacts={conts} onSel={sel} activeId={actId} onLex={()=>setView('lex')}/>
+          :view==='lex'
+            ?<LexChat onBack={()=>setView('list')}/>
+            :actC
+              ?<RegChat key={actC.id} contact={actC}
+                  onBack={()=>setView('list')} onLex={()=>setView('lex')}/>
+              :null}
+    </div>
+  );
+
+  /* 실제 모바일: 풀스크린 */
+  if(isReal) return(
+    <div style={{width:'100%',height:'100%',background:C.bg,position:'relative',overflow:'hidden'}}>
+      {ui}
+    </div>
+  );
+
+  /* ── 데스크탑: 폰 목업 ─────────────────────────────────────────────── */
+  /* 뷰포트 높이에 맞게 scale */
+  const PHONE_W=390, PHONE_H=844, SHELL=12;
+  const availH=winH-60;          // 상하 30px 여백
+  const availW=winW-200;         // 좌우 100px 여백
+  const scaleH=(availH)/(PHONE_H+SHELL*2);
+  const scaleW=(availW)/(PHONE_W+SHELL*2);
+  const scale=Math.min(1, scaleH, scaleW);
+
+  return(
+    <div style={{width:'100%',height:'100%',display:'flex',
+      alignItems:'center',justifyContent:'center',
+      background:'#E8EBF2',
+      backgroundImage:'radial-gradient(circle,#C4C8D8 1px,transparent 1px)',
+      backgroundSize:'28px 28px',overflow:'hidden'}}>
+
+      {/* 좌상단 브랜드 */}
+      <div style={{position:'fixed',top:20,left:24,
+        display:'flex',alignItems:'center',gap:8,zIndex:10}}>
+        <div style={{width:30,height:30,borderRadius:9,
+          background:'linear-gradient(135deg,#E30613,#8A0009)',
+          display:'flex',alignItems:'center',justifyContent:'center',
+          fontWeight:900,color:'#fff',fontSize:12,
+          fontFamily:"'DM Mono',monospace"}}>L</div>
+        <div>
+          <div style={{fontSize:13,fontWeight:800,color:'#2A2D3E',
+            fontFamily:"'DM Mono',monospace"}}>LEX</div>
+          <div style={{fontSize:9,color:'#8A8EA8',
+            fontFamily:"'DM Mono',monospace",letterSpacing:'.1em'}}>KT LEGAL AI</div>
+        </div>
+      </div>
+      {/* 우상단 뱃지 */}
+      <div style={{position:'fixed',top:24,right:24,zIndex:10,
+        display:'flex',alignItems:'center',gap:5,
+        background:'rgba(255,255,255,.88)',backdropFilter:'blur(8px)',
+        borderRadius:18,padding:'4px 11px',
+        border:'1px solid rgba(227,6,19,.14)',
+        boxShadow:'0 2px 10px rgba(0,0,0,.06)'}}>
+        <div style={{width:5,height:5,borderRadius:'50%',background:C.green,animation:'pulse 2s ease infinite'}}/>
+        <span style={{fontSize:10,color:'#5E6078',fontFamily:"'DM Mono',monospace"}}>금투협 · 금감원 공인</span>
+      </div>
+
+      {/* 폰 목업 — scale 적용, transform-origin: center */}
+      <div style={{
+        transformOrigin:'center center',
+        transform:`scale(${scale})`,
+        /* 크기를 줄여도 공간 차지를 그만큼 줄임 */
+        width:PHONE_W+SHELL*2,
+        height:PHONE_H+SHELL*2,
+        borderRadius:52,
+        background:'#1A1B26',
+        boxShadow:'0 0 0 2px #2E3044,0 28px 70px rgba(0,0,0,.32),inset 0 0 0 1px rgba(255,255,255,.06)',
+        padding:SHELL,
+        flexShrink:0,
+        position:'relative',
+      }}>
+        {/* 화면 */}
+        <div style={{width:'100%',height:'100%',borderRadius:42,
+          overflow:'hidden',position:'relative',background:C.bg}}>
+          {ui}
+        </div>
+        {/* 다이나믹 아일랜드 */}
+        <div style={{position:'absolute',top:18,left:'50%',
+          transform:'translateX(-50%)',width:118,height:33,
+          background:'#1A1B26',borderRadius:19,zIndex:300,
+          boxShadow:'inset 0 1px 3px rgba(0,0,0,.5)'}}/>
+        {/* 사이드 버튼 */}
+        <div style={{position:'absolute',top:128,left:-3,width:3,height:30,
+          background:'#2E3044',borderRadius:'2px 0 0 2px'}}/>
+        <div style={{position:'absolute',top:172,left:-3,width:3,height:54,
+          background:'#2E3044',borderRadius:'2px 0 0 2px'}}/>
+        <div style={{position:'absolute',top:238,left:-3,width:3,height:54,
+          background:'#2E3044',borderRadius:'2px 0 0 2px'}}/>
+        <div style={{position:'absolute',top:172,right:-3,width:3,height:78,
+          background:'#2E3044',borderRadius:'0 2px 2px 0'}}/>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
